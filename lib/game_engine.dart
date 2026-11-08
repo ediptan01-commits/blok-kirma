@@ -325,8 +325,8 @@ class BlockGame {
       Weapon.laser=>.16,Weapon.rocket=>.38
     };
     final result=base*[1.0,1.0,.87,.75,.68][power]*
-      pow(.87,upgrades['speed']!)*(rapidSeconds>0?.65:1)*(feverSeconds>0?.72:1);
-    return max(weapon==Weapon.rocket?.14:.042,result).toDouble();
+      pow(.87,upgrades['speed']!)*(rapidSeconds > 0 ? 0.65 : 1.0)*(feverSeconds > 0 ? 0.72 : 1.0);
+    return max(weapon == Weapon.rocket ? 0.14 : 0.042,result).toDouble();
   }
 
   void summonBoss() {
