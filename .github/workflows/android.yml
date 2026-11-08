@@ -1,0 +1,60 @@
+name: Blok Kırma - Android APK ve AAB
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Flutter test / APK / AAB
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Kaynak kodu
+        uses: actions/checkout@v4
+
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Android proje altyapısını oluştur
+        run: |
+          flutter create --platforms=android --project-name blok_kirma --org com.teknolojix --no-pub .
+          sed -i 's/android:label="blok_kirma"/android:label="Blok Kırma"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Paketleri yükle
+        run: flutter pub get
+
+      - name: Kod denetimi
+        run: flutter analyze --no-fatal-infos
+
+      - name: Testler
+        run: flutter test
+
+      - name: APK üret
+        run: flutter build apk --release
+
+      - name: AAB üret
+        run: flutter build appbundle --release
+
+      - name: APK ve AAB yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Blok-Kirma-v1.0.0-APK-AAB
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30
