@@ -36,7 +36,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
   late final Ticker ticker;
   Duration? previous;
   final focus=FocusNode();
-  bool left=false,right=false,firing=false;
+  bool left=false,right=false,dragging=false;
 
   @override
   void initState() {
@@ -47,7 +47,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
       final old=previous;previous=elapsed;
       if(!mounted)return;
       final dt=old==null?0.0:((elapsed-old).inMicroseconds/1000000).clamp(0.0,.035);
-      setState(()=>game.tick(dt,left:left,right:right,fire:firing));
+      setState(()=>game.tick(dt,left:left,right:right));
     })..start();
   }
 
@@ -62,7 +62,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
   }
   void restart() {
     setState(() {
-      game.reset();left=false;right=false;firing=false;
+      game.reset();left=false;right=false;dragging=false;
       game.startOrPause();
     });
   }
@@ -103,25 +103,6 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
         ),
         child:FittedBox(fit:BoxFit.scaleDown,
           child:Text(label,style:const TextStyle(fontSize:12,fontWeight:FontWeight.w800))),
-      ),
-    ));
-
-  Widget holdButton(String label,VoidCallback onDown,VoidCallback onUp,{bool shoot=false})=>
-    Expanded(flex:shoot?16:10,child:Padding(padding:const EdgeInsets.symmetric(horizontal:4),
-      child:Listener(
-        onPointerDown:(_)=>onDown(),
-        onPointerUp:(_)=>onUp(),
-        onPointerCancel:(_)=>onUp(),
-        child:Container(height:58,alignment:Alignment.center,
-          decoration:BoxDecoration(
-            gradient:LinearGradient(begin:Alignment.topCenter,end:Alignment.bottomCenter,
-              colors:shoot?[const Color(0xFFFF9878),const Color(0xFFED5062)]:
-                [const Color(0xFF36536F),const Color(0xFF24374E)]),
-            borderRadius:BorderRadius.circular(11),
-            border:Border.all(color:shoot?const Color(0xFFFFAB8A):const Color(0xFF4B6889)),
-          ),
-          child:Text(label,style:TextStyle(fontSize:shoot?15:24,fontWeight:FontWeight.w900)),
-        ),
       ),
     ));
 
@@ -212,8 +193,8 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
       setState(()=>right=down);return KeyEventResult.handled;
     }
     if(event.logicalKey==LogicalKeyboardKey.space){
-      if(down&&game.phase==GamePhase.ready)toggle();
-      setState(()=>firing=down);return KeyEventResult.handled;
+      if(event is KeyDownEvent && game.phase==GamePhase.ready)toggle();
+      return KeyEventResult.handled;
     }
     if(event.logicalKey==LogicalKeyboardKey.keyP&&event is KeyDownEvent){
       toggle();return KeyEventResult.handled;
@@ -242,7 +223,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                   const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                     Text('BLOK KIRMA',style:TextStyle(fontSize:17,fontWeight:FontWeight.w900,
                       color:Color(0xFF4CE3D0))),
-                    Text('SAVAŞ ARENASI · 7.0',
+                    Text('SAVAŞ ARENASI · 7.1',
                       style:TextStyle(fontSize:10,color:Color(0xFFA2B8CD))),
                   ])),
                   smallStat('PUAN',g.score.toString()),
@@ -261,15 +242,15 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                           setState((){
                             g.auto=false;
                             g.targetX=(e.localPosition.dx/box.maxWidth*gameWidth).clamp(20.0,400.0);
-                            firing=true;
+                            dragging=true;
                           });
                         }
                       },
-                      onPointerMove:(e){if(firing&&g.phase==GamePhase.playing){
+                      onPointerMove:(e){if(dragging&&g.phase==GamePhase.playing){
                         setState(()=>g.targetX=(e.localPosition.dx/box.maxWidth*gameWidth).clamp(20.0,400.0));
                       }},
-                      onPointerUp:(_)=>setState(()=>firing=false),
-                      onPointerCancel:(_)=>setState(()=>firing=false),
+                      onPointerUp:(_)=>setState(()=>dragging=false),
+                      onPointerCancel:(_)=>setState(()=>dragging=false),
                       child:CustomPaint(painter:GamePainter(g),child:const SizedBox.expand()),
                     ),
                   ),
@@ -283,7 +264,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                 Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
                   Text('Blok: '+g.bricks.length.toString(),style:const TextStyle(fontSize:10)),
                   Text('GÜÇ '+g.power.toString(),style:const TextStyle(fontSize:10)),
-                  Text('↓ '+(g.freezeSeconds>0?0:g.speed.round()).toString()+' px/sn',
+                  Text('↓ '+g.speed.round().toString()+' px/sn',
                     style:const TextStyle(fontSize:10)),
                   Text(g.feverSeconds>0?'🔥 FEVER':g.shieldSeconds>0?'🛡️ Kalkan':'Normal',
                     style:const TextStyle(fontSize:10)),
@@ -324,14 +305,9 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                   ));
                 }).toList()),
                 const SizedBox(height:8),
-                Row(children:[
-                  holdButton('◀',()=>setState(()=>left=true),()=>setState(()=>left=false)),
-                  holdButton('● ATEŞ',(){
-                    if(g.phase==GamePhase.ready)toggle();
-                    setState(()=>firing=true);
-                  },()=>setState(()=>firing=false),shoot:true),
-                  holdButton('▶',()=>setState(()=>right=true),()=>setState(()=>right=false)),
-                ]),
+                const Text('OTOMATİK ATEŞ AKTİF · EKRANDA SÜRÜKLEYEREK NİŞAN AL',
+                  textAlign:TextAlign.center,
+                  style:TextStyle(fontSize:11,color:Color(0xFF69E9D5),fontWeight:FontWeight.w800)),
                 const SizedBox(height:10),
                 Wrap(spacing:6,runSpacing:4,alignment:WrapAlignment.center,children:[
                   TextButton(onPressed:bossDemo,child:const Text('👑 Boss Dene')),
@@ -347,7 +323,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                     ],
                     onChanged:(value){if(value!=null)setState(()=>g.speedMode=value);}),
                 ]),
-                const Text('Blokları vur, düşen güç kutularını yakala. FEVER otomatik başlar. '
+                const Text('Silah sürekli otomatik ateş eder. Parmağınla sürükleyerek yönlendir. FEVER otomatik başlar. '
                   'Tehlike çizgisine yaklaştıkça silah güçlenir.',
                   style:TextStyle(color:Color(0xFF9BB3C8),fontSize:10,height:1.5),
                   textAlign:TextAlign.center),

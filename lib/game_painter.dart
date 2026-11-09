@@ -59,7 +59,6 @@ class GamePainter extends CustomPainter {
       if(b.y+brickHeight<43||b.y>gameHeight)continue;
       final color=switch(b.kind) {
         BrickKind.stone=>const Color(0xFF8597B1),
-        BrickKind.ice=>const Color(0xFF8DDFF3),
         BrickKind.gold=>const Color(0xFFFFCB67),
         BrickKind.bomb=>const Color(0xFFFF798D),
         BrickKind.electric=>const Color(0xFFA79DFF),
@@ -70,7 +69,7 @@ class GamePainter extends CustomPainter {
       rounded(c,b.x+4,b.y+3,brickWidth-8,2,1,const Color(0x99FFFFFF));
       final symbol=switch(b.kind) {
         BrickKind.bomb=>'✹',BrickKind.electric=>'ϟ',
-        BrickKind.ice=>'❄',BrickKind.gold=>'★',
+        BrickKind.gold=>'★',
         _=>b.health>1?b.health.toString():'—',
       };
       label(c,symbol,b.x+brickWidth/2,b.y+15,size:16,
@@ -112,7 +111,6 @@ class GamePainter extends CustomPainter {
       final color=switch(p.kind){
         DropKind.rapid=>const Color(0xFFFFD27B),
         DropKind.shield=>const Color(0xFF83C4FF),
-        DropKind.freeze=>const Color(0xFFACEEFF),
         DropKind.heart=>const Color(0xFFFF92AA),
         DropKind.coins=>const Color(0xFFFFDC81),
       };
@@ -123,7 +121,7 @@ class GamePainter extends CustomPainter {
         Paint()..color=color..style=PaintingStyle.stroke..strokeWidth=2,
       );
       final icon=switch(p.kind){
-        DropKind.rapid=>'ϟ',DropKind.shield=>'◆',DropKind.freeze=>'❄',
+        DropKind.rapid=>'ϟ',DropKind.shield=>'◆',
         DropKind.heart=>'♥',DropKind.coins=>'★',
       };
       label(c,icon,p.x,dy,size:19,color:color);
@@ -158,10 +156,6 @@ class GamePainter extends CustomPainter {
     if(g.feverSeconds>0){
       label(c,'🔥 FEVER '+g.feverSeconds.toStringAsFixed(1)+'s',
         210,79,size:19,color:const Color(0xFFFFD78A));
-    }
-    if(g.freezeSeconds>0){
-      label(c,'❄ DONDURULDU',82,dangerLine-17,size:11,
-        color:const Color(0xFF92EFFF));
     }
     if(g.messageSeconds>0 && g.phase==GamePhase.playing){
       rounded(c,55,280,310,48,11,const Color(0xE2102035));

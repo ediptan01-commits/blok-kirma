@@ -11,12 +11,17 @@ void main() {
     expect(game.phase, GamePhase.ready);
   });
 
-  test('Otomatik ateş mermi üretir', () {
+  test('Düğme olmadan oyun otomatik ateş eder', () {
     final game = BlockGame((_) {});
     game.phase = GamePhase.playing;
-    game.auto = true;
-    game.tick(.15, left: false, right: false, fire: false);
+    game.auto = false;
+    game.tick(.15, left: false, right: false);
     expect(game.shots, isNotEmpty);
+  });
+
+  test('Buz blokları ve dondurma kutuları kaldırılmıştır', () {
+    expect(BrickKind.values.map((kind) => kind.name), isNot(contains('ice')));
+    expect(DropKind.values.map((kind) => kind.name), isNot(contains('freeze')));
   });
 
   test('Beşinci bölümde boss savaşı çalışır', () {

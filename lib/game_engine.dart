@@ -15,9 +15,9 @@ const brickPalette = <Color>[
 ];
 
 enum GamePhase { ready, playing, paused, lost }
-enum BrickKind { ordinary, stone, bomb, electric, ice, gold }
+enum BrickKind { ordinary, stone, bomb, electric, gold }
 enum Weapon { machine, spread, laser, rocket }
-enum DropKind { rapid, shield, freeze, heart, coins }
+enum DropKind { rapid, shield, heart, coins }
 
 class Brick {
   Brick(this.x, this.y, this.kind, this.health, this.color);
@@ -89,7 +89,7 @@ class BlockGame {
   int total = 0, rowNumber = 0, power = 1, speedMode = 1;
   double gunX = 210, targetX = 210, elapsed = 0, shotClock = 0, speed = 65;
   double fever = 0, feverSeconds = 0, shieldSeconds = 0, rapidSeconds = 0;
-  double freezeSeconds = 0, invincibleSeconds = 0, pressure = 0;
+  double invincibleSeconds = 0, pressure = 0;
   double recoil = 0, shake = 0, flash = 0, messageSeconds = 0;
   String message = '';
   bool auto = false, shopOpen = false;
@@ -112,7 +112,7 @@ class BlockGame {
     total = 0;rowNumber = 0;power = 1;
     gunX = 210;targetX = 210;elapsed = 0;shotClock = 0;speed = 65;
     fever = 0;feverSeconds = 0;shieldSeconds = 0;rapidSeconds = 0;
-    freezeSeconds = 0;invincibleSeconds = 0;pressure = 0;
+    invincibleSeconds = 0;pressure = 0;
     recoil = 0;shake = 0;flash = 0;messageSeconds = 0;
     message = '';auto = false;shopOpen = false;boss = null;
     weapon = Weapon.machine;
@@ -145,9 +145,8 @@ class BlockGame {
       final chance = random.nextDouble();
       final kind = chance < .065 ? BrickKind.bomb
           : chance < .13 ? BrickKind.electric
-          : chance < .20 ? BrickKind.ice
-          : chance < .29 ? BrickKind.gold
-          : chance < .45 ? BrickKind.stone : BrickKind.ordinary;
+          : chance < .23 ? BrickKind.gold
+          : chance < .43 ? BrickKind.stone : BrickKind.ordinary;
       final health = kind == BrickKind.stone ? (level > 3 ? 5 : 4)
           : kind == BrickKind.ordinary && random.nextDouble() < .25 ? 2 : 1;
       bricks.add(Brick(22 + col * 37.8, y, kind, health,
@@ -221,9 +220,6 @@ class BlockGame {
           hitBrick(other,2,depth+1);
         }
       }
-    } else if (brick.kind == BrickKind.ice) {
-      freezeSeconds=max(freezeSeconds,2.5);
-      sound('hit');
     } else if (brick.kind == BrickKind.gold) {
       sound('coin');
     } else {
@@ -377,7 +373,6 @@ class BlockGame {
     switch(p.kind) {
       case DropKind.rapid:rapidSeconds=9;announce('HIZLI ATES: 9 SN');
       case DropKind.shield:shieldSeconds=16;announce('KALKAN AKTIF');
-      case DropKind.freeze:freezeSeconds=4;announce('BLOKLAR DONDURULDU');
       case DropKind.heart:lives=min(5,lives+1);announce('+1 CAN');
       case DropKind.coins:coins+=40;announce('+40 ALTIN');
     }
@@ -395,7 +390,7 @@ class BlockGame {
     if(lives<=0){phase=GamePhase.lost;auto=false;}
   }
 
-  void tick(double dt,{required bool left,required bool right,required bool fire}) {
+  void tick(double dt,{required bool left,required bool right}) {
     recoil=max(0,recoil-dt*11);shake=max(0,shake-dt*7);
     flash=max(0,flash-dt*2);messageSeconds=max(0,messageSeconds-dt);
     for(final p in List<Dust>.of(dust)){
@@ -408,7 +403,6 @@ class BlockGame {
     if(phase!=GamePhase.playing||shopOpen)return;
     elapsed+=dt;
     feverSeconds=max(0,feverSeconds-dt);
-    freezeSeconds=max(0,freezeSeconds-dt);
     rapidSeconds=max(0,rapidSeconds-dt);
     shieldSeconds=max(0,shieldSeconds-dt);
     invincibleSeconds=max(0,invincibleSeconds-dt);
@@ -439,13 +433,12 @@ class BlockGame {
     gunX+=(targetX-gunX)*min(1,dt*19);
     updatePower();
     shotClock+=dt;
-    if(auto||fire) {
-      final interval=fireInterval();var count=0;
-      while(shotClock>=interval&&count++<5) {shoot();shotClock-=interval;}
-    }else{shotClock=min(shotClock,fireInterval());}
+    // Sürekli ateş: oyuncu yalnızca silahı sürükleyerek yönlendirir.
+    final interval=fireInterval();var count=0;
+    while(shotClock>=interval&&count++<5) {shoot();shotClock-=interval;}
 
     speed+=(desiredSpeed()-speed)*min(1,dt*3.5);
-    final displacement=freezeSeconds>0?0.0:speed*dt;
+    final displacement=speed*dt;
     for(final b in bricks){b.y+=displacement;}
 
     final activeBoss=boss;
