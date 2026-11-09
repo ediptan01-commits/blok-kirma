@@ -15,7 +15,7 @@ const brickPalette = <Color>[
 ];
 
 enum GamePhase { ready, playing, paused, lost }
-enum BrickKind { ordinary, stone, bomb, electric, gold }
+enum BrickKind { ordinary, stone, bomb, electric, gold, armored, prism, column }
 enum Weapon { machine, spread, laser, rocket }
 enum DropKind { rapid, shield, heart, coins }
 
@@ -143,12 +143,35 @@ class BlockGame {
     for (var col = 0; col < 10; col++) {
       if (row % 6 == 4 && col == (row * 3) % 10) continue;
       final chance = random.nextDouble();
-      final kind = chance < .065 ? BrickKind.bomb
-          : chance < .13 ? BrickKind.electric
-          : chance < .23 ? BrickKind.gold
-          : chance < .43 ? BrickKind.stone : BrickKind.ordinary;
-      final health = kind == BrickKind.stone ? (level > 3 ? 5 : 4)
-          : kind == BrickKind.ordinary && random.nextDouble() < .25 ? 2 : 1;
+      // İlerleyen bölümlerde yeni bloklar ve giderek değişen dalga düzenleri.
+      // Her yeni türün görünmesi bazı sıralarda garanti edilir.
+      final BrickKind kind;
+      if (level >= 4 && row % 4 == 0 && col == 4) {
+        kind = BrickKind.column;
+      } else if (level >= 3 && row % 3 == 0 && col == 6) {
+        kind = BrickKind.prism;
+      } else if (level >= 2 && row % 2 == 0 && col == 2) {
+        kind = BrickKind.armored;
+      } else if (level >= 4 && chance < .065) {
+        kind = BrickKind.column;
+      } else if (level >= 3 && chance < .13) {
+        kind = BrickKind.prism;
+      } else if (level >= 2 && chance < .21) {
+        kind = BrickKind.armored;
+      } else {
+        kind = chance < .285 ? BrickKind.bomb
+            : chance < .35 ? BrickKind.electric
+            : chance < .46 ? BrickKind.gold
+            : chance < .63 ? BrickKind.stone : BrickKind.ordinary;
+      }
+      final health = switch(kind) {
+        BrickKind.armored => 6 + min(4, (level - 2) ~/ 2),
+        BrickKind.stone => level > 3 ? 5 : 4,
+        BrickKind.column => 2,
+        BrickKind.prism => 2,
+        BrickKind.ordinary => random.nextDouble() < .25 ? 2 : 1,
+        _ => 1,
+      };
       bricks.add(Brick(22 + col * 37.8, y, kind, health,
           brickPalette[(col + row ~/ 2) % brickPalette.length]));
     }
@@ -193,7 +216,7 @@ class BlockGame {
     destroyed++;
     total++;
     score += (12 + level * 3) * (feverSeconds > 0 ? 2 : 1);
-    coins += brick.kind == BrickKind.gold ? 28 : 3;
+    coins += brick.kind == BrickKind.gold ? 28 : brick.kind == BrickKind.armored ? 12 : 3;
     final x = brick.x + brickWidth/2, y = brick.y+brickHeight/2;
     particles(x,y,brick.color,brick.kind == BrickKind.bomb?24:11);
     energy(brick.kind == BrickKind.stone ? 12 : 8);
@@ -220,6 +243,22 @@ class BlockGame {
           hitBrick(other,2,depth+1);
         }
       }
+    } else if (brick.kind == BrickKind.column) {
+      // Sütun kırıcı: aynı dikey hattaki yakın bloklara 2 hasar.
+      sound('boom');flash=max(flash,.12);
+      for (final other in List<Brick>.of(bricks)) {
+        if ((other.x-brick.x).abs()<8 && (other.y-brick.y).abs()<rowGap*4.3) {
+          rays.add(Ray(x,y,other.x+brickWidth/2,
+              other.y+brickHeight/2,const Color(0xFFFFAC72),.16));
+          hitBrick(other,2,depth+1);
+        }
+      }
+    } else if (brick.kind == BrickKind.prism) {
+      energy(30);
+      sound('power');
+      announce('PRİZMA +30 FEVER');
+    } else if (brick.kind == BrickKind.armored) {
+      sound('hit');
     } else if (brick.kind == BrickKind.gold) {
       sound('coin');
     } else {
@@ -339,7 +378,15 @@ class BlockGame {
     if(level%5==0) {
       summonBoss();
     } else {
-      coins+=20;announce('BOLUM $level +20 ALTIN',2);sound('power');
+      coins+=20;
+      final newKind = switch(level) {
+        2 => 'YENİ: ZIRHLI BLOKLAR!',
+        3 => 'YENİ: FEVER PRİZMALARI!',
+        4 => 'YENİ: SÜTUN KIRICILAR!',
+        _ => 'BOLUM $level +20 ALTIN',
+      };
+      announce(newKind,2.4);
+      sound('power');
     }
   }
 
@@ -390,7 +437,7 @@ class BlockGame {
     if(lives<=0){phase=GamePhase.lost;auto=false;}
   }
 
-  void tick(double dt,{required bool left,required bool right}) {
+  void tick(double dt,{required bool left,required bool right,required bool fire}) {
     recoil=max(0,recoil-dt*11);shake=max(0,shake-dt*7);
     flash=max(0,flash-dt*2);messageSeconds=max(0,messageSeconds-dt);
     for(final p in List<Dust>.of(dust)){
@@ -432,10 +479,16 @@ class BlockGame {
     targetX=targetX.clamp(20.0,400.0);
     gunX+=(targetX-gunX)*min(1,dt*19);
     updatePower();
-    shotClock+=dt;
-    // Sürekli ateş: oyuncu yalnızca silahı sürükleyerek yönlendirir.
-    final interval=fireInterval();var count=0;
-    while(shotClock>=interval&&count++<5) {shoot();shotClock-=interval;}
+    // Basılı tutunca ateş; otomatik tarama ayrıca açılabilir.
+    // Boşta geçen sürede mermiler birikmez.
+    final interval=fireInterval();
+    if(auto || fire) {
+      shotClock+=dt;
+      var count=0;
+      while(shotClock>=interval&&count++<5) {shoot();shotClock-=interval;}
+    } else {
+      shotClock=min(shotClock,interval);
+    }
 
     speed+=(desiredSpeed()-speed)*min(1,dt*3.5);
     final displacement=speed*dt;

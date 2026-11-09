@@ -36,7 +36,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
   late final Ticker ticker;
   Duration? previous;
   final focus=FocusNode();
-  bool left=false,right=false,dragging=false;
+  bool left=false,right=false,dragging=false,keyFiring=false;
 
   @override
   void initState() {
@@ -47,7 +47,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
       final old=previous;previous=elapsed;
       if(!mounted)return;
       final dt=old==null?0.0:((elapsed-old).inMicroseconds/1000000).clamp(0.0,.035);
-      setState(()=>game.tick(dt,left:left,right:right));
+      setState(()=>game.tick(dt,left:left,right:right,fire:dragging||keyFiring));
     })..start();
   }
 
@@ -57,17 +57,20 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
   }
 
   void toggle() {
-    setState(()=>game.startOrPause());
+    setState(() {
+      game.startOrPause();
+      if(game.phase!=GamePhase.playing){dragging=false;keyFiring=false;}
+    });
     focus.requestFocus();
   }
   void restart() {
     setState(() {
-      game.reset();left=false;right=false;dragging=false;
+      game.reset();left=false;right=false;dragging=false;keyFiring=false;
       game.startOrPause();
     });
   }
   void bossDemo() {
-    setState(()=>game.bossDemo());
+    setState(() {dragging=false;keyFiring=false;game.bossDemo();});
   }
 
   String gunName(Weapon w)=>switch(w) {
@@ -194,6 +197,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
     }
     if(event.logicalKey==LogicalKeyboardKey.space){
       if(event is KeyDownEvent && game.phase==GamePhase.ready)toggle();
+      setState(()=>keyFiring=down);
       return KeyEventResult.handled;
     }
     if(event.logicalKey==LogicalKeyboardKey.keyP&&event is KeyDownEvent){
@@ -223,7 +227,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                   const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                     Text('BLOK KIRMA',style:TextStyle(fontSize:17,fontWeight:FontWeight.w900,
                       color:Color(0xFF4CE3D0))),
-                    Text('SAVAŞ ARENASI · 7.1',
+                    Text('SAVAŞ ARENASI · 7.2',
                       style:TextStyle(fontSize:10,color:Color(0xFFA2B8CD))),
                   ])),
                   smallStat('PUAN',g.score.toString()),
@@ -305,7 +309,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                   ));
                 }).toList()),
                 const SizedBox(height:8),
-                const Text('OTOMATİK ATEŞ AKTİF · EKRANDA SÜRÜKLEYEREK NİŞAN AL',
+                const Text('BASILI TUT = ATEŞ ET · SÜRÜKLE = NİŞAN AL',
                   textAlign:TextAlign.center,
                   style:TextStyle(fontSize:11,color:Color(0xFF69E9D5),fontWeight:FontWeight.w800)),
                 const SizedBox(height:10),
@@ -323,7 +327,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                     ],
                     onChanged:(value){if(value!=null)setState(()=>g.speedMode=value);}),
                 ]),
-                const Text('Silah sürekli otomatik ateş eder. Parmağınla sürükleyerek yönlendir. FEVER otomatik başlar. '
+                const Text('Ekrana basılı tutarak ateş et; parmağını kaldırınca durur. Otomatik mod isteğe bağlıdır. '
                   'Tehlike çizgisine yaklaştıkça silah güçlenir.',
                   style:TextStyle(color:Color(0xFF9BB3C8),fontSize:10,height:1.5),
                   textAlign:TextAlign.center),

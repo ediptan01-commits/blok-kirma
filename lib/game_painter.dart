@@ -62,6 +62,9 @@ class GamePainter extends CustomPainter {
         BrickKind.gold=>const Color(0xFFFFCB67),
         BrickKind.bomb=>const Color(0xFFFF798D),
         BrickKind.electric=>const Color(0xFFA79DFF),
+        BrickKind.armored=>const Color(0xFF526888),
+        BrickKind.prism=>const Color(0xFFEC85F5),
+        BrickKind.column=>const Color(0xFFFFA66F),
         BrickKind.ordinary=>b.color,
       };
       rounded(c,b.x,b.y+3,brickWidth,brickHeight,4,const Color(0xFF071322));
@@ -70,10 +73,13 @@ class GamePainter extends CustomPainter {
       final symbol=switch(b.kind) {
         BrickKind.bomb=>'✹',BrickKind.electric=>'ϟ',
         BrickKind.gold=>'★',
+        BrickKind.armored=>b.health.toString(),
+        BrickKind.prism=>'◆',
+        BrickKind.column=>'↟',
         _=>b.health>1?b.health.toString():'—',
       };
       label(c,symbol,b.x+brickWidth/2,b.y+15,size:16,
-        color:b.kind==BrickKind.bomb?const Color(0xFFFFE8B9):const Color(0xFF26364C),
+        color:b.kind==BrickKind.bomb||b.kind==BrickKind.armored?const Color(0xFFFFE8B9):const Color(0xFF26364C),
         weight:FontWeight.w900);
     }
 

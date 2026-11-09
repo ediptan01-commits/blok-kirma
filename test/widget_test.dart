@@ -7,5 +7,7 @@ void main() {
     expect(find.text('BLOK KIRMA'), findsOneWidget);
     expect(find.text('▶ Başlat'), findsOneWidget);
     expect(find.text('🛒 Mağaza'), findsOneWidget);
+    expect(find.text('● ATEŞ'), findsNothing);
+    expect(find.text('BASILI TUT = ATEŞ ET · SÜRÜKLE = NİŞAN AL'), findsOneWidget);
   });
 }

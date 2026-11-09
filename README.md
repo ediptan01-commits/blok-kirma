@@ -6,14 +6,17 @@
 - Yukarıdan sürekli, sık ve hızlanarak inen renkli bloklar
 - Tehlike çizgisine yaklaştıkça güçlenen silah
 - Zincirleme bomba ve elektrik patlamaları
-- Taş, altın ve normal bloklar (buz/dondurma kaldırıldı)
+- İlk bölümde normal, taş, altın, bomba ve elektrik blokları
+- 2. bölümde zırhlı, 3. bölümde FEVER prizması, 4. bölümde sütun kırıcı bloklar
+- Buz ve dondurma mekanikleri kaldırıldı
 - Düşen güç kutuları (kalkan, hızlı ateş, can, altın)
 - FEVER sistemi ve uzun, kesintisiz bölümler
 - Dört silah: taramalı, saçmalı, lazer, roket
 - 5. bölüm ve her 5 bölümde bir boss
 - Altınla silah satın alma ve güçlendirme
-- Tuşsuz dokunmatik kontrol: parmağınla sürükleyerek nişan al, sürekli otomatik ateş
-- İsteğe bağlı otomatik hedef tarama ve Türkçe arayüz
+- Tuşsuz dokunmatik kontrol: basılı tutarak ateş et, sürükleyerek nişan al, bırakınca dur
+- İsteğe bağlı otomatik hedef tarama/ateş; oyun başlayınca kendiliğinden ateş etmez
+- Türkçe arayüz
 - Çevrimdışı, sentetik ses efektleri
 
 ## Android APK ve AAB
