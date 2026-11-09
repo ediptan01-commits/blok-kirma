@@ -343,7 +343,7 @@ class BlockGame {
   }
 
   void shoot() {
-    final damage=1+upgrades['damage']!+min(4,waveTier)+(power>=3?1:0)+(power==4?1:0)+(feverSeconds>0?1:0);
+    final int damage=1+upgrades['damage']!+min<int>(4,waveTier)+(power>=3?1:0)+(power==4?1:0)+(feverSeconds>0?1:0);
     recoil=1;
     if(weapon==Weapon.laser) {
       rays.add(Ray(gunX,gridTop-18,gunX,gunLine-40,const Color(0xFFA1FFFF),.14));
