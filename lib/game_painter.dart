@@ -21,6 +21,24 @@ class GamePainter extends CustomPainter {
     painter.paint(c,Offset(x-painter.width/2,y-painter.height/2));
   }
 
+  Path blockPath(Brick b){
+    final x=b.x,y=b.y,w=b.width,h=b.height;
+    switch(b.shape){
+      case BrickShape.rectangle:
+        return Path()..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x,y,w,h),const Radius.circular(4)));
+      case BrickShape.hexagon:
+        return Path()..moveTo(x+w*.22,y)..lineTo(x+w*.78,y)
+          ..lineTo(x+w,y+h*.5)..lineTo(x+w*.78,y+h)
+          ..lineTo(x+w*.22,y+h)..lineTo(x,y+h*.5)..close();
+      case BrickShape.diamond:
+        return Path()..moveTo(x+w*.5,y)..lineTo(x+w,y+h*.5)
+          ..lineTo(x+w*.5,y+h)..lineTo(x,y+h*.5)..close();
+      case BrickShape.triangle:
+        return Path()..moveTo(x+w*.5,y)
+          ..lineTo(x+w,y+h)..lineTo(x,y+h)..close();
+    }
+  }
+
   @override
   void paint(Canvas canvas, Size size){
     canvas.save();
@@ -33,7 +51,7 @@ class GamePainter extends CustomPainter {
     if(g.feverSeconds>0){
       rounded(c,0,0,gameWidth,gameHeight,0,const Color(0x20FFAD52));
     }
-    label(c,g.boss==null?'BLOK AKIŞI':'BOSS SAVAŞI',85,26,size:10,
+    label(c,g.boss==null?'DALGA ${g.waveTier+1} · ${g.waveName}':'BOSS SAVAŞI',120,26,size:10,
       color:const Color(0xFFADC4D9));
     label(c,'↓ '+g.speed.round().toString()+' px/sn',362,26,size:10,
       color:const Color(0xFF7DFFE1));
@@ -56,7 +74,7 @@ class GamePainter extends CustomPainter {
       Paint()..color=const Color(0xFF467D94));
 
     for(final b in g.bricks){
-      if(b.y+brickHeight<43||b.y>gameHeight)continue;
+      if(b.y+b.height<43||b.y>gameHeight)continue;
       final color=switch(b.kind) {
         BrickKind.stone=>const Color(0xFF8597B1),
         BrickKind.gold=>const Color(0xFFFFCB67),
@@ -67,19 +85,21 @@ class GamePainter extends CustomPainter {
         BrickKind.column=>const Color(0xFFFFA66F),
         BrickKind.ordinary=>b.color,
       };
-      rounded(c,b.x,b.y+3,brickWidth,brickHeight,4,const Color(0xFF071322));
-      rounded(c,b.x,b.y,brickWidth,brickHeight-3,4,color);
-      rounded(c,b.x+4,b.y+3,brickWidth-8,2,1,const Color(0x99FFFFFF));
-      final symbol=switch(b.kind) {
-        BrickKind.bomb=>'✹',BrickKind.electric=>'ϟ',
-        BrickKind.gold=>'★',
-        BrickKind.armored=>b.health.toString(),
-        BrickKind.prism=>'◆',
-        BrickKind.column=>'↟',
-        _=>b.health>1?b.health.toString():'—',
+      final shape=blockPath(b);
+      c.drawPath(shape.shift(const Offset(0,3)),Paint()..color=const Color(0xFF071322));
+      c.drawPath(shape,Paint()..color=color);
+      c.save();c.clipPath(shape);
+      c.drawRect(Rect.fromLTWH(b.x,b.y,b.width,b.height*.3),Paint()..color=const Color(0x35FFFFFF));
+      c.restore();
+      final symbol=switch(b.kind){
+        BrickKind.bomb=>'✹',BrickKind.electric=>'ϟ',BrickKind.gold=>'★',
+        BrickKind.armored=>b.health.toString(),BrickKind.prism=>'◆',
+        BrickKind.column=>'↟',_=>b.health>1?b.health.toString():'—',
       };
-      label(c,symbol,b.x+brickWidth/2,b.y+15,size:16,
-        color:b.kind==BrickKind.bomb||b.kind==BrickKind.armored?const Color(0xFFFFE8B9):const Color(0xFF26364C),
+      label(c,symbol,b.x+b.width/2,b.y+b.height*(b.shape==BrickShape.triangle?.69:.53),
+        size:min(16,b.width*.47),
+        color:b.kind==BrickKind.bomb||b.kind==BrickKind.armored?
+          const Color(0xFFFFE8B9):const Color(0xFF26364C),
         weight:FontWeight.w900);
     }
 
@@ -138,27 +158,7 @@ class GamePainter extends CustomPainter {
           alpha:(p.life/p.initial).clamp(0.0,1.0)));
     }
 
-    final gunColor=g.feverSeconds>0?const Color(0xFFFFBE66):
-      g.power==4?const Color(0xFFFF866A):const Color(0xFF30DAC3);
-    if(g.shieldSeconds>0){
-      c.drawArc(Rect.fromCircle(center:Offset(g.gunX,gunLine-14),radius:34),
-        pi,pi,false,Paint()..color=const Color(0xFF83D8FF)
-          ..style=PaintingStyle.stroke..strokeWidth=3);
-    }
-    rounded(c,g.gunX-13,gunLine-24,26,42,6,gunColor);
-    final barrels=g.weapon==Weapon.rocket?[-9.0,9.0]:
-      g.weapon==Weapon.spread?[-12.0,0,12.0]:
-      g.weapon==Weapon.laser?[0.0]:
-      g.power==1?[0.0]:[-12.0,0,12.0];
-    for(final dx in barrels){
-      rounded(c,g.gunX+dx-5,gunLine-38+g.recoil*7,10,29,4,
-        const Color(0xFFB9D6E8));
-      rounded(c,g.gunX+dx-3,gunLine-39+g.recoil*7,6,5,2,
-        const Color(0xFF203248));
-    }
-    rounded(c,g.gunX-25,gunLine,50,18,7,const Color(0xFF537EAD));
-    rounded(c,g.gunX-18,gunLine+3,36,6,3,const Color(0xFFBFDDEA));
-    rounded(c,g.gunX-5,gunLine+4,10,9,3,const Color(0xFF41F1D7));
+    drawGun(c);
     if(g.feverSeconds>0){
       label(c,'🔥 FEVER '+g.feverSeconds.toStringAsFixed(1)+'s',
         210,79,size:19,color:const Color(0xFFFFD78A));
@@ -195,6 +195,94 @@ class GamePainter extends CustomPainter {
         weight:FontWeight.w900);
     }
     canvas.restore();
+  }
+
+  void drawGun(Canvas c){
+    c.save();
+    c.translate(g.gunX,gunLine+g.recoil*2.6);
+    final machine=g.weapon==Weapon.machine;
+    final metal=Paint()..shader=const LinearGradient(
+      colors:[Color(0xFF263A49),Color(0xFFCDD4DB),Color(0xFF465B70)],
+      begin:Alignment.centerLeft,end:Alignment.centerRight,
+    ).createShader(const Rect.fromLTWH(-45,-63,90,84));
+    final dark=Paint()..color=const Color(0xFF172836);
+    // Ağır makineli tüfek yuvası, mekanizma ve perçinler.
+    rounded(c,-33,10,66,12,6,const Color(0xFF304E68));
+    rounded(c,-25,12,50,5,2,const Color(0xFF9BACB9));
+    for(final side in [-27.0,27.0]){
+      c.drawCircle(Offset(side,15),3,Paint()..color=const Color(0xFFDFE5E6));
+      c.drawCircle(Offset(side,15),1.4,dark);
+    }
+    if(g.shieldSeconds>0){
+      c.drawArc(const Rect.fromLTWH(-39,-71,78,78),pi,pi,false,
+        Paint()..color=const Color(0xFF8CDEFF)
+          ..strokeWidth=3..style=PaintingStyle.stroke);
+    }
+    // Mühimmat kutusu ve metalik fişek şeridi.
+    rounded(c,-40,-13,22,24,4,const Color(0xFF364B3D));
+    rounded(c,-37,-10,16,4,1,const Color(0xFF8FA276));
+    for(var i=0;i<5;i++){
+      rounded(c,-18+i*3.2,-13-i*1.8,3.5,7,1,const Color(0xFFD1A751));
+    }
+    c.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-22,-28,44,36),
+      const Radius.circular(8)),metal);
+    rounded(c,-17,-26,34,7,3,const Color(0xFF283B4C));
+    rounded(c,-15,-15,30,4,1,const Color(0xFF9CAAB9));
+    if(machine){
+      // Altı namlulu döner taramalı silah. Gerçekçi metal yüzey / ısı kalkanı.
+      final spin=g.elapsed*(g.recoil>0?35:2);
+      for(var i=0;i<6;i++){
+        final angle=spin+i*pi/3;
+        final dx=cos(angle)*7;
+        rounded(c,dx-2,-62+g.recoil*5,4.2,44,1.5,
+          i.isEven?const Color(0xFFCDD7DD):const Color(0xFF3C5368));
+        rounded(c,dx-2,-61+g.recoil*5,4.2,5,1,const Color(0xFF192B36));
+      }
+      rounded(c,-12,-45,24,8,3,const Color(0xFF2C4355));
+      for(var i=0;i<4;i++){
+        c.drawCircle(Offset(-7+i*4.6,-41),1.1,
+          Paint()..color=const Color(0xFFC7D0D1));
+      }
+      rounded(c,-12,-23,24,6,3,const Color(0xFF9CABBA));
+      c.drawOval(const Rect.fromLTWH(-10,-66,20,7),dark);
+      for(var i=0;i<3;i++){
+        c.drawCircle(Offset((i-1)*5,-62),1.6,
+          Paint()..color=const Color(0xFFB8C6C5));
+      }
+    }else{
+      final barrels=g.weapon==Weapon.rocket?[-9.0,9.0]:
+        g.weapon==Weapon.spread?[-10.0,0.0,10.0]:[0.0];
+      for(final dx in barrels){
+        c.drawRRect(RRect.fromRectAndRadius(
+          Rect.fromLTWH(dx-5,-58+g.recoil*5,10,39),
+          const Radius.circular(3)),metal);
+        rounded(c,dx-3,-60+g.recoil*5,6,5,2,const Color(0xFF12242C));
+      }
+      rounded(c,-13,-25,26,7,3,const Color(0xFF8497A8));
+    }
+    rounded(c,-11,4,22,11,3,g.feverSeconds>0?
+      const Color(0xFFFFB064):const Color(0xFF3DDCC5));
+    if(g.recoil>.35&&machine){
+      // Ateş sırasında boş kovanlar sağa dökülür.
+      for(var i=0;i<3;i++){
+        final fraction=(g.elapsed*15+i*.31)%1.0;
+        c.save();c.translate(21+fraction*14,-12+fraction*18);
+        c.rotate(.45+fraction*2.4);
+        rounded(c,0,0,5,2.3,1,const Color(0xFFE3B25D));
+        c.restore();
+      }
+    }
+    if(g.recoil>.15){
+      final fireColor=g.feverSeconds>0?
+        const Color(0xFFFFC448):const Color(0xFFFFE3A0);
+      final tip=machine?-67.0:-60.0;
+      final muzzle=Path()..moveTo(0,tip+5)
+        ..lineTo(-9,tip-6)..lineTo(-2,tip-11)
+        ..lineTo(0,tip-22-g.recoil*8)
+        ..lineTo(4,tip-9)..lineTo(10,tip-6)..close();
+      c.drawPath(muzzle,Paint()..color=fireColor);
+    }
+    c.restore();
   }
 
   @override
