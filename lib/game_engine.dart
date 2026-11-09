@@ -16,15 +16,31 @@ const brickPalette = <Color>[
 
 enum GamePhase { ready, playing, paused, lost }
 enum BrickKind { ordinary, stone, bomb, electric, gold, armored, prism, column }
+enum BrickShape { rectangle, hexagon, diamond, triangle }
 enum Weapon { machine, spread, laser, rocket }
 enum DropKind { rapid, shield, heart, coins }
 
 class Brick {
-  Brick(this.x, this.y, this.kind, this.health, this.color);
+  Brick(this.x, this.y, this.kind, this.health, this.color,
+    {this.width = brickWidth,this.height = brickHeight,
+     this.shape = BrickShape.rectangle,this.tier = 0});
   double x, y;
-  BrickKind kind;
+  final BrickKind kind;
   int health;
-  Color color;
+  final Color color;
+  final double width, height;
+  final BrickShape shape;
+  final int tier;
+  bool acceptsHit(double px,double py){
+    final u=(px-x)/width,v=(py-y)/height;
+    if(u<0||u>1||v<0||v>1)return false;
+    switch(shape){
+      case BrickShape.rectangle: return true;
+      case BrickShape.hexagon: return (u-.5).abs() <= .32+.18*(1-(v-.5).abs()*2);
+      case BrickShape.diamond: return (u-.5).abs()+(v-.5).abs()<=.53;
+      case BrickShape.triangle: return (u-.5).abs()<=.07+.44*v;
+    }
+  }
 }
 
 class Shot {
@@ -94,6 +110,18 @@ class BlockGame {
   String message = '';
   bool auto = false, shopOpen = false;
 
+  // Yeni geometriler: her 5 bölümde farklı ebat, kolon ve şekil.
+  int get waveTier => (level-1) ~/ 5;
+  int get waveColumns => [10,8,12,9][waveTier%4];
+  double get waveHeight => [31.0,38.0,27.0,35.0][waveTier%4];
+  double get wavePitch => waveHeight+4;
+  BrickShape get waveShape => BrickShape.values[waveTier%4];
+  String get waveName => switch(waveShape){
+    BrickShape.rectangle=>'DİKDÖRTGEN',
+    BrickShape.hexagon=>'ALTIGEN',
+    BrickShape.diamond=>'ELMAS',
+    BrickShape.triangle=>'ÜÇGEN',
+  };
   int get goal => 150 + (level - 1) * 80;
   double get progress => boss != null
       ? (1 - boss!.health / boss!.maximum).clamp(0.0,1.0)
@@ -116,7 +144,7 @@ class BlockGame {
     recoil = 0;shake = 0;flash = 0;messageSeconds = 0;
     message = '';auto = false;shopOpen = false;boss = null;
     weapon = Weapon.machine;
-    for (var r = 0; r < 5; r++) { addRow(gridTop + r * rowGap); }
+    for (var r = 0; r < 5; r++) { addRow(gridTop + r * wavePitch); }
   }
 
   void startOrPause() {
@@ -140,9 +168,13 @@ class BlockGame {
 
   void addRow(double y) {
     final row = rowNumber++;
-    for (var col = 0; col < 10; col++) {
-      if (row % 6 == 4 && col == (row * 3) % 10) continue;
-      final chance = random.nextDouble();
+    final columns=waveColumns;
+    const gap=2.8;
+    final width=(gameWidth-44-(columns-1)*gap)/columns;
+    final height=waveHeight;
+    for(var col=0;col<columns;col++){
+      if(row%7==5 && col==(row*3)%columns)continue;
+      final chance=random.nextDouble();
       // İlerleyen bölümlerde yeni bloklar ve giderek değişen dalga düzenleri.
       // Her yeni türün görünmesi bazı sıralarda garanti edilir.
       final BrickKind kind;
@@ -172,8 +204,10 @@ class BlockGame {
         BrickKind.ordinary => random.nextDouble() < .25 ? 2 : 1,
         _ => 1,
       };
-      bricks.add(Brick(22 + col * 37.8, y, kind, health,
-          brickPalette[(col + row ~/ 2) % brickPalette.length]));
+      bricks.add(Brick(22+col*(width+gap),y,kind,
+          health+waveTier*(kind==BrickKind.armored?2:1),
+          brickPalette[(col+row~/2+waveTier)%brickPalette.length],
+          width:width,height:height,shape:waveShape,tier:waveTier));
     }
   }
 
@@ -203,7 +237,7 @@ class BlockGame {
     if (!bricks.contains(brick) || depth > 55) return;
     brick.health -= damage;
     energy(1.2);
-    particles(brick.x+brickWidth/2,brick.y+brickHeight/2,brick.color,3,.5);
+    particles(brick.x+brick.width/2,brick.y+brick.height/2,brick.color,3,.5);
     if (brick.health <= 0) {
       destroyBrick(brick,depth);
     } else {
@@ -217,26 +251,26 @@ class BlockGame {
     total++;
     score += (12 + level * 3) * (feverSeconds > 0 ? 2 : 1);
     coins += brick.kind == BrickKind.gold ? 28 : brick.kind == BrickKind.armored ? 12 : 3;
-    final x = brick.x + brickWidth/2, y = brick.y+brickHeight/2;
+    final x = brick.x + brick.width/2, y = brick.y+brick.height/2;
     particles(x,y,brick.color,brick.kind == BrickKind.bomb?24:11);
     energy(brick.kind == BrickKind.stone ? 12 : 8);
 
     if (brick.kind == BrickKind.bomb) {
       sound('boom');shake = .35;flash = .22;
       for (final other in List<Brick>.of(bricks)) {
-        final dx=other.x+brickWidth/2-x, dy=other.y+brickHeight/2-y;
+        final dx=other.x+other.width/2-x, dy=other.y+other.height/2-y;
         if (dx*dx+dy*dy < 69*69) hitBrick(other,2,depth+1);
       }
     } else if (brick.kind == BrickKind.electric) {
       sound('power');
       final nearest=List<Brick>.of(bricks);
       nearest.sort((a,b) {
-        final da=pow(a.x+brickWidth/2-x,2)+pow(a.y+brickHeight/2-y,2);
-        final db=pow(b.x+brickWidth/2-x,2)+pow(b.y+brickHeight/2-y,2);
+        final da=pow(a.x+a.width/2-x,2)+pow(a.y+a.height/2-y,2);
+        final db=pow(b.x+b.width/2-x,2)+pow(b.y+b.height/2-y,2);
         return da.compareTo(db);
       });
       for (final other in nearest.take(4)) {
-        final ox=other.x+brickWidth/2,oy=other.y+brickHeight/2;
+        final ox=other.x+other.width/2,oy=other.y+other.height/2;
         final dx=ox-x,dy=oy-y;
         if (dx*dx+dy*dy<120*120) {
           rays.add(Ray(x,y,ox,oy,const Color(0xFFB2EEFF),.17));
@@ -247,9 +281,9 @@ class BlockGame {
       // Sütun kırıcı: aynı dikey hattaki yakın bloklara 2 hasar.
       sound('boom');flash=max(flash,.12);
       for (final other in List<Brick>.of(bricks)) {
-        if ((other.x-brick.x).abs()<8 && (other.y-brick.y).abs()<rowGap*4.3) {
-          rays.add(Ray(x,y,other.x+brickWidth/2,
-              other.y+brickHeight/2,const Color(0xFFFFAC72),.16));
+        if ((other.x-brick.x).abs()<8 && (other.y-brick.y).abs()<wavePitch*4.3) {
+          rays.add(Ray(x,y,other.x+other.width/2,
+              other.y+other.height/2,const Color(0xFFFFAC72),.16));
           hitBrick(other,2,depth+1);
         }
       }
@@ -288,7 +322,7 @@ class BlockGame {
       level++;
       destroyed = 0;
       rowNumber=0;
-      for (var r=0;r<5;r++) {addRow(gridTop+r*rowGap);}
+      for (var r=0;r<5;r++) {addRow(gridTop+r*wavePitch);}
       announce('BOSS YENILDI! +150 ALTIN',2.5);
     }
   }
@@ -298,7 +332,7 @@ class BlockGame {
     shake = .19;
     particles(x,y,const Color(0xFFFFBB7B),24,1.4);
     for (final b in List<Brick>.of(bricks)) {
-      final dx=b.x+brickWidth/2-x,dy=b.y+brickHeight/2-y;
+      final dx=b.x+b.width/2-x,dy=b.y+b.height/2-y;
       if (dx*dx+dy*dy<radius*radius) hitBrick(b,damage);
     }
     final b=boss;
@@ -309,11 +343,11 @@ class BlockGame {
   }
 
   void shoot() {
-    final damage=1+upgrades['damage']!+(power>=3?1:0)+(power==4?1:0)+(feverSeconds>0?1:0);
+    final damage=1+upgrades['damage']!+min(4,waveTier)+(power>=3?1:0)+(power==4?1:0)+(feverSeconds>0?1:0);
     recoil=1;
     if(weapon==Weapon.laser) {
       rays.add(Ray(gunX,gridTop-18,gunX,gunLine-40,const Color(0xFFA1FFFF),.14));
-      final hits=bricks.where((b)=>gunX>=b.x-5&&gunX<=b.x+brickWidth+5).toList();
+      final hits=bricks.where((b)=>b.acceptsHit(gunX,b.y+b.height*.58)).toList();
       hits.sort((a,b)=>b.y.compareTo(a.y));
       for (final b in hits.take(3+power+upgrades['spread']!)) {
         hitBrick(b,damage);
@@ -360,7 +394,7 @@ class BlockGame {
       Weapon.laser=>.16,Weapon.rocket=>.38
     };
     final result=base*[1.0,1.0,.87,.75,.68][power]*
-      pow(.87,upgrades['speed']!)*(rapidSeconds > 0 ? 0.65 : 1.0)*(feverSeconds > 0 ? 0.72 : 1.0);
+      pow(.87,upgrades['speed']!)*pow(.93,min(5,waveTier))*(rapidSeconds > 0 ? 0.65 : 1.0)*(feverSeconds > 0 ? 0.72 : 1.0);
     return max(weapon == Weapon.rocket ? 0.14 : 0.042,result).toDouble();
   }
 
@@ -379,6 +413,12 @@ class BlockGame {
       summonBoss();
     } else {
       coins+=20;
+      if((level-1)%5==0){
+        rowNumber=0;
+        announce('YENİ DALGA: '+waveName+' · SİLAH GÜÇLENDİ!',3);
+        sound('power');
+        return;
+      }
       final newKind = switch(level) {
         2 => 'YENİ: ZIRHLI BLOKLAR!',
         3 => 'YENİ: FEVER PRİZMALARI!',
@@ -398,22 +438,23 @@ class BlockGame {
     for(final b in bricks){top=min(top,b.y);}
     final minY=boss==null?gridTop:185.0;
     var count=0;
-    while(top>=minY+rowGap-.5 && count++<12) {
-      top-=rowGap;addRow(top);
+    while(top>=minY+wavePitch-.5 && count++<12) {
+      top-=wavePitch;addRow(top);
     }
   }
 
   double desiredSpeed() {
-    final density=(bricks.length/105).clamp(0.0,1.0);
-    return (55+51*pow(1-density,1.3)+min(22,(level-1)*2.5))*
+    final density=(bricks.length/(waveColumns*10.5)).clamp(0.0,1.0);
+    return (55+51*pow(1-density,1.3)+min(28,(level-1)*2.5)+waveTier*3)*
         [.78,1.0,1.28][speedMode];
   }
 
   void updatePower() {
     var bottom=gridTop;
-    for(final b in bricks){bottom=max(bottom,b.y+brickHeight);}
+    for(final b in bricks){bottom=max(bottom,b.y+b.height);}
     pressure=((bottom-(dangerLine-265))/265).clamp(0.0,1.0);
-    power=pressure>.80?4:pressure>.55?3:pressure>.27?2:1;
+    final dangerPower=pressure>.80?4:pressure>.55?3:pressure>.27?2:1;
+    power=max(dangerPower,min(4,waveTier+1));
   }
 
   void takeDrop(Drop p) {
@@ -465,11 +506,11 @@ class BlockGame {
         Brick? selected;
         var best=-double.infinity;
         for(final b in bricks){
-          final rating=b.y*1.5-(b.x+brickWidth/2-gunX).abs()*.08+
+          final rating=b.y*1.5-(b.x+b.width/2-gunX).abs()*.08+
             ((b.kind==BrickKind.bomb||b.kind==BrickKind.electric)?36:0);
           if(rating>best){best=rating;selected=b;}
         }
-        if(selected!=null)targetX=selected.x+brickWidth/2;
+        if(selected!=null)targetX=selected.x+selected.width/2;
         else if(boss!=null)targetX=boss!.x+68;
       }
     }else {
@@ -522,14 +563,15 @@ class BlockGame {
       Brick? target;
       var closest=-double.infinity;
       for(final b in bricks) {
-        if(p.x>=b.x-3&&p.x<=b.x+brickWidth+3&&
-            previousY>=b.y-3&&p.y<=b.y+brickHeight+3){
+        if(p.x>=b.x-3&&p.x<=b.x+b.width+3&&
+            previousY>=b.y-3&&p.y<=b.y+b.height+3&&
+            b.acceptsHit(p.x,b.y+b.height*.57)){
           if(b.y>closest){closest=b.y;target=b;}
         }
       }
       if(target!=null) {
         if(p.rocket) {
-          explode(p.x,target.y+brickHeight,75,p.damage+2);
+          explode(p.x,target.y+target.height,75,p.damage+2);
         } else {
           hitBrick(target,p.damage);
         }
@@ -552,8 +594,8 @@ class BlockGame {
     }
 
     fillRows();
-    if(invincibleSeconds<=0&&bricks.any((b)=>b.y+brickHeight>=dangerLine)){
-      final overdue=bricks.where((b)=>b.y+brickHeight>dangerLine-53).toList();
+    if(invincibleSeconds<=0&&bricks.any((b)=>b.y+b.height>=dangerLine)){
+      final overdue=bricks.where((b)=>b.y+b.height>dangerLine-53).toList();
       for(final b in overdue){
         bricks.remove(b);
         particles(b.x,b.y,const Color(0xFFFF7190),5);
