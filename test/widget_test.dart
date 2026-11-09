@@ -6,6 +6,7 @@ void main() {
     await tester.pumpWidget(const BlokKirmaApp());
     expect(find.text('BLOK KIRMA'), findsOneWidget);
     expect(find.text('▶ Başlat'), findsOneWidget);
+    expect(find.byKey(const ValueKey('game-arena')),findsOneWidget);
     expect(find.text('🛒 Mağaza'), findsOneWidget);
     expect(find.text('● ATEŞ'), findsNothing);
     expect(find.text('BASILI TUT = ATEŞ ET · SÜRÜKLE = NİŞAN AL'), findsOneWidget);

@@ -97,7 +97,7 @@ class GamePainter extends CustomPainter {
         BrickKind.column=>'↟',_=>b.health>1?b.health.toString():'—',
       };
       label(c,symbol,b.x+b.width/2,b.y+b.height*(b.shape==BrickShape.triangle?.69:.53),
-        size:min(16,b.width*.47),
+        size:min(16.0,b.width*.47),
         color:b.kind==BrickKind.bomb||b.kind==BrickKind.armored?
           const Color(0xFFFFE8B9):const Color(0xFF26364C),
         weight:FontWeight.w900);

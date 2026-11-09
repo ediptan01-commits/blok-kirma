@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: android-build-main
+  cancel-in-progress: true
+
 jobs:
   android:
     name: Flutter test / APK / AAB
@@ -34,6 +38,9 @@ jobs:
           flutter create --platforms=android --project-name blok_kirma --org com.teknolojix --no-pub .
           sed -i 's/android:label="blok_kirma"/android:label="Blok Kırma"/' android/app/src/main/AndroidManifest.xml
 
+      - name: CC0 gerçek taramalı silah seslerini indir
+        run: bash tool/fetch_audio.sh
+
       - name: Paketleri yükle
         run: flutter pub get
 
@@ -52,7 +59,7 @@ jobs:
       - name: APK ve AAB yükle
         uses: actions/upload-artifact@v4
         with:
-          name: Blok-Kirma-v1.0.2-APK-AAB
+          name: Blok-Kirma-v1.1.0-APK-AAB
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab

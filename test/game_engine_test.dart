@@ -51,6 +51,37 @@ void main() {
     expect(DropKind.values.map((kind) => kind.name), isNot(contains('freeze')));
   });
 
+  test('Her beş bölümde gerçek geometriler ve boyutlar değişir', () {
+    final game=BlockGame((_) {});
+    final widths=<double>[];
+    final shapes=<BrickShape>[];
+    for(final level in [1,6,11,16]){
+      game.level=level;
+      game.bricks.clear();game.rowNumber=0;
+      game.addRow(80);
+      widths.add(game.bricks.first.width);
+      shapes.add(game.bricks.first.shape);
+    }
+    expect(widths.toSet().length,4);
+    expect(shapes.toSet().length,4);
+  });
+
+  test('Yeni dalgada silahın asgari gücü artar', () {
+    final game=BlockGame((_) {});
+    game.level=11;
+    game.updatePower();
+    expect(game.power,greaterThanOrEqualTo(3));
+  });
+
+  test('Üçgen köşelerine ateş etmek isabet sayılmaz', () {
+    final game=BlockGame((_) {});
+    game.level=16;game.bricks.clear();game.rowNumber=0;
+    game.addRow(80);
+    final b=game.bricks.first;
+    expect(b.acceptsHit(b.x+1,b.y+1),isFalse);
+    expect(b.acceptsHit(b.x+b.width/2,b.y+b.height*.6),isTrue);
+  });
+
   test('Beşinci bölümde boss savaşı çalışır', () {
     final game = BlockGame((_) {});
     game.bossDemo();

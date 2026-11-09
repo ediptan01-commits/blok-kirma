@@ -1,7 +1,7 @@
 name: blok_kirma
 description: Blok Kırma - Teknolojix arcade block shooter game
 publish_to: none
-version: 1.0.2+3
+version: 1.1.0+4
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
@@ -18,3 +18,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/audio/

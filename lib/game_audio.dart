@@ -1,8 +1,10 @@
 import 'dart:math';
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 
-/// Offline, generated arcade sound effects. No network calls or third-party recordings.
+/// Real CC0 firearm recordings for gunshots; offline procedural sounds for other effects.
+/// WAV assets are bundled during Android build (see tool/fetch_audio.sh).
 class GameAudio {
   final _players = List.generate(8, (_) => AudioPlayer());
   final _sounds = <String, Uint8List>{};
@@ -86,17 +88,34 @@ class GameAudio {
     return result.buffer.asUint8List();
   }
 
+  Future<void> _playRealShot(AudioPlayer player,int variant) async {
+    try {
+      await player.stop();
+      // Genuine near-field M45 submachine-gun shot recording (CC0).
+      await player.play(AssetSource('audio/mp5-report-$variant.wav'),volume:.55);
+    }catch(_){
+      // Offline developer builds without fetched assets still have a fallback.
+      try {
+        await player.play(BytesSource(_sounds['shot']!),volume:.40);
+      }catch(_){}
+    }
+  }
+
   void play(String effect) {
     if (!enabled) return;
     final now=DateTime.now();
-    final threshold=effect=='shot'?100:effect=='hit'?70:0;
+    final threshold=effect=='shot'?105:effect=='hit'?70:0;
     final previous=_last[effect];
     if (previous!=null && now.difference(previous).inMilliseconds<threshold) return;
     _last[effect]=now;
-    final data=_sounds[effect]??_sounds['start']!;
     final player=_players[_index++ % _players.length];
-    player.stop().then((_)=>player.play(BytesSource(data),volume:.52))
+    if(effect=='shot'){
+      unawaited(_playRealShot(player,(_index-1)%3));
+    }else{
+      final data=_sounds[effect]??_sounds['start']!;
+      player.stop().then((_)=>player.play(BytesSource(data),volume:.48))
         .catchError((Object _) {});
+    }
   }
 
   Future<void> dispose() async {
