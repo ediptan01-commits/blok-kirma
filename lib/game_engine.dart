@@ -164,8 +164,8 @@ class BlockGame {
             : chance < .46 ? BrickKind.gold
             : chance < .63 ? BrickKind.stone : BrickKind.ordinary;
       }
-      final health = switch(kind) {
-        BrickKind.armored => 6 + min(4, (level - 2) ~/ 2),
+      final int health = switch(kind) {
+        BrickKind.armored => 6 + min<int>(4, (level - 2) ~/ 2),
         BrickKind.stone => level > 3 ? 5 : 4,
         BrickKind.column => 2,
         BrickKind.prism => 2,
