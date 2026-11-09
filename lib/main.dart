@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'game_engine.dart';
@@ -227,7 +228,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                   const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                     Text('BLOK KIRMA',style:TextStyle(fontSize:17,fontWeight:FontWeight.w900,
                       color:Color(0xFF4CE3D0))),
-                    Text('SAVAŞ ARENASI · 7.2',
+                    Text('SAVAŞ ARENASI · 8.0',
                       style:TextStyle(fontSize:10,color:Color(0xFFA2B8CD))),
                   ])),
                   smallStat('PUAN',g.score.toString()),
@@ -238,7 +239,17 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                 LayoutBuilder(builder:(ctx,box)=>AspectRatio(
                   aspectRatio:gameWidth/gameHeight,
                   child:ClipRRect(borderRadius:BorderRadius.circular(12),
-                    child:Listener(
+                    child:RawGestureDetector(
+                      key:const ValueKey('game-arena'),
+                      behavior:HitTestBehavior.opaque,
+                      gestures:<Type,GestureRecognizerFactory>{
+                        EagerGestureRecognizer:GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
+                          () => EagerGestureRecognizer(),
+                          (EagerGestureRecognizer instance) {},
+                        ),
+                      },
+                      child:Listener(
+                        behavior:HitTestBehavior.opaque,
                       onPointerDown:(e){
                         focus.requestFocus();
                         if(g.phase!=GamePhase.playing)toggle();
@@ -256,6 +267,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                       onPointerUp:(_)=>setState(()=>dragging=false),
                       onPointerCancel:(_)=>setState(()=>dragging=false),
                       child:CustomPaint(painter:GamePainter(g),child:const SizedBox.expand()),
+                      ),
                     ),
                   ),
                 )),
@@ -263,7 +275,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                 meter('⚡ FEVER',g.feverSeconds>0?'AKTİF · '+g.feverSeconds.toStringAsFixed(1)+' sn':
                   g.fever.floor().toString()+'%',g.feverProgress,const Color(0xFFFFB969)),
                 const SizedBox(height:9),
-                meter('BÖLÜM '+g.level.toString(),progressText,g.progress,const Color(0xFF39DBC6)),
+                meter('BÖLÜM '+g.level.toString()+' · '+g.waveName,progressText,g.progress,const Color(0xFF39DBC6)),
                 const SizedBox(height:9),
                 Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
                   Text('Blok: '+g.bricks.length.toString(),style:const TextStyle(fontSize:10)),
@@ -327,7 +339,7 @@ class _BlokKirmaPageState extends State<BlokKirmaPage> with SingleTickerProvider
                     ],
                     onChanged:(value){if(value!=null)setState(()=>g.speedMode=value);}),
                 ]),
-                const Text('Ekrana basılı tutarak ateş et; parmağını kaldırınca durur. Otomatik mod isteğe bağlıdır. '
+                const Text('Oyun alanını basılı tutup sürükle; ekran kaymaz. Ateş etmek için basılı tut; Otomatik modu isteğe bağlı. '
                   'Tehlike çizgisine yaklaştıkça silah güçlenir.',
                   style:TextStyle(color:Color(0xFF9BB3C8),fontSize:10,height:1.5),
                   textAlign:TextAlign.center),
